@@ -21,8 +21,14 @@ describe('CouchbaseConnectionManager', function() {
 	var couchbaseConnectionManager = require('..').couchbaseConnectionManager;
 
 	afterEach(function(done) {
+		var doneInvoked = 0;
+		var connCount = couchbaseConnectionManager.getConnectionCount();
 		couchbaseConnectionManager.stop(function() {
-			done();
+			doneInvoked++;
+			console.log("******* doneInvoked = " + doneInvoked);
+			if (connCount === doneInvoked) {
+				done();
+			}
 		});
 		couchbaseConnectionManager.clear();
 	});
@@ -47,6 +53,7 @@ describe('CouchbaseConnectionManager', function() {
 		};
 
 		couchbaseConnectionManager.registerConnection(options);
+		expect(couchbaseConnectionManager.getBucketCount()).to.equal(2);
 		couchbaseConnectionManager.start(function(cbConn) {
 			expect(cbConn).to.exist;
 			expect(couchbaseConnectionManager.getBucketConnection('default')).to.exist;
@@ -108,6 +115,79 @@ describe('CouchbaseConnectionManager', function() {
 					done(error);
 				} else {
 					done();
+				}
+			});
+		});
+
+	});
+
+	it('can be used to register multiple connections', function(done) {
+		var options = {
+			couchbase : {
+				"host" : [ "localhost:8091" ],
+				buckets : [ {
+					"bucket" : "default"
+				} ]
+			},
+			connectionListener : function() {
+				console.log('CONNECTED TO COUCHBASE');
+			},
+			connectionErrorListener : function(error) {
+				console.error(error);
+				done(error);
+			},
+			logLevel : 'ERROR'
+		};
+		couchbaseConnectionManager.registerConnection(options);
+
+		couchbaseConnectionManager.registerConnection({
+			couchbase : {
+				"host" : [ "localhost:8091" ],
+				buckets : [ {
+					"bucket" : "test"
+				} ]
+			},
+			connectionListener : function() {
+				console.log('CONNECTED TO COUCHBASE');
+			},
+			connectionErrorListener : function(error) {
+				console.error(error);
+				done(error);
+			},
+			logLevel : 'ERROR'
+		});
+
+		expect(couchbaseConnectionManager.getBucketCount()).to.equal(2);
+
+		var connCount = 0;
+		var doneCalled = false;
+		couchbaseConnectionManager.start(function(cbConn) {
+			connCount++;
+			expect(cbConn).to.exist;
+			expect(couchbaseConnectionManager.getBucketConnection(cbConn.options.couchbase.bucket)).to.exist;
+			expect(couchbaseConnectionManager.getConnection(cbConn.options.couchbase.host, cbConn.options.couchbase.bucket)).to.exist;
+
+			console.log('*** cbConn ***');
+			console.log(cbConn);
+			console.log("*** couchbaseConnectionManager.getBucketConnection('" + cbConn.options.couchbase.bucket + "') ***");
+			console.log(couchbaseConnectionManager.getBucketConnection(cbConn.options.couchbase.bucket));
+
+			var cb = couchbaseConnectionManager.getBucketConnection(cbConn.options.couchbase.bucket);
+			cb.set('CouchbaseConnectionManager', {
+				msg : 'can be used to register a connection'
+			}, options, function(error, result) {
+				if (error) {
+					done(error);
+				} else {
+					if (connCount === 2) {
+						console.log('*********** done called connCount = ' + connCount);
+						if (!doneCalled) {
+							doneCalled = true;
+							done();
+						}
+					} else {
+						console.log('*********** done not called - connCount = ' + connCount);
+					}
 				}
 			});
 		});
