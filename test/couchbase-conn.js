@@ -18,6 +18,7 @@
 var expect = require('chai').expect;
 
 describe('CouchbaseConnection', function() {
+	var CouchbaseConnection = require('..').CouchbaseConnection;
 	var cbConn = null;
 
 	after(function(done) {
@@ -49,10 +50,12 @@ describe('CouchbaseConnection', function() {
 			logLevel : 'DEBUG'
 		};
 
-		cbConn = require('..').couchbaseConnection(options);
+		cbConn = new CouchbaseConnection(options);
 		expect(cbConn).to.exist;
 		cbConn.start(function() {
-			cbConn.cb.set('CouchbaseConnection', "can be used to create a connection", options, function(error, result) {
+			cbConn.cb.set('CouchbaseConnection', {
+				msg : 'can be used to create a connection'
+			}, options, function(error, result) {
 				if (error) {
 					done(error);
 				} else {
