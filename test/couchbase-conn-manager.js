@@ -79,6 +79,52 @@ describe('CouchbaseConnectionManager', function() {
 
 	});
 
+	it('can be used to register a connection and invokes the startCallback after the connection is started', function(done) {
+		var options = {
+			couchbase : {
+				"host" : [ "localhost:8091" ],
+				buckets : [ {
+					"bucket" : "default",
+					aliases : [ 'default', 'test' ]
+				} ]
+			},
+			connectionListener : function() {
+				console.log('CONNECTED TO COUCHBASE');
+			},
+			connectionErrorListener : function(error) {
+				console.error(error);
+				done(error);
+			},
+			logLevel : 'DEBUG',
+			startCallback : function(cbConn) {
+				expect(couchbaseConnectionManager.getBucketCount()).to.equal(2);
+				expect(cbConn).to.exist;
+				expect(couchbaseConnectionManager.getBucketConnection('default')).to.exist;
+				expect(couchbaseConnectionManager.getBucketConnection('test')).to.exist;
+				expect(couchbaseConnectionManager.getBucketConnection('test')).to.equal(couchbaseConnectionManager.getBucketConnection('default'));
+				expect(couchbaseConnectionManager.getConnection([ "localhost:8091" ], 'default')).to.exist;
+				console.log('*** cbConn ***');
+				console.log(cbConn);
+				console.log("*** couchbaseConnectionManager.getBucketConnection('default') ***");
+				console.log(couchbaseConnectionManager.getBucketConnection('default'));
+
+				var cb = couchbaseConnectionManager.getBucketConnection('default');
+				cb.set('CouchbaseConnectionManager', {
+					msg : 'can be used to register a connection'
+				}, null, function(error, result) {
+					if (error) {
+						done(error);
+					} else {
+						done();
+					}
+				});
+			}
+		};
+
+		couchbaseConnectionManager.registerConnection(options);
+
+	});
+
 	it('can be used to register a connection with no aliases', function(done) {
 		var options = {
 			couchbase : {

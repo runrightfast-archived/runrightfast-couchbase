@@ -1,6 +1,6 @@
 {
 	"name":"runrightfast-couchbase",
-	"version":"0.0.3",
+	"version":"0.0.4",
 	"description":"RunRightFast Couchbase helps manage Couchbase connections",
 	"repository":{
 		"type":"git",
