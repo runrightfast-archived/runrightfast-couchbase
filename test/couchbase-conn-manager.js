@@ -161,8 +161,7 @@ describe('CouchbaseConnectionManager', function() {
 
 		var connCount = 0;
 		var doneCalled = false;
-		couchbaseConnectionManager.start(function(cbConn) {
-			connCount++;
+		couchbaseConnectionManager.start(function(cbConn) {			
 			expect(cbConn).to.exist;
 			expect(couchbaseConnectionManager.getBucketConnection(cbConn.options.couchbase.bucket)).to.exist;
 			expect(couchbaseConnectionManager.getConnection(cbConn.options.couchbase.host, cbConn.options.couchbase.bucket)).to.exist;
@@ -179,6 +178,7 @@ describe('CouchbaseConnectionManager', function() {
 				if (error) {
 					done(error);
 				} else {
+					connCount++;
 					if (connCount === 2) {
 						console.log('*********** done called connCount = ' + connCount);
 						if (!doneCalled) {
