@@ -136,7 +136,11 @@ describe('CouchbaseConnectionManager', function() {
 				console.error(error);
 				done(error);
 			},
-			logLevel : 'ERROR'
+			logLevel : 'ERROR',
+			start : true,
+			startCallback : function(result) {
+				console.log(result);
+			}
 		};
 		couchbaseConnectionManager.registerConnection(options);
 
@@ -161,7 +165,7 @@ describe('CouchbaseConnectionManager', function() {
 
 		var connCount = 0;
 		var doneCalled = false;
-		couchbaseConnectionManager.start(function(cbConn) {			
+		couchbaseConnectionManager.start(function(cbConn) {
 			expect(cbConn).to.exist;
 			expect(couchbaseConnectionManager.getBucketConnection(cbConn.options.couchbase.bucket)).to.exist;
 			expect(couchbaseConnectionManager.getConnection(cbConn.options.couchbase.host, cbConn.options.couchbase.bucket)).to.exist;
