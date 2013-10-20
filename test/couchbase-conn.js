@@ -16,6 +16,7 @@
 
 'use strict';
 var expect = require('chai').expect;
+var Couchbase = require('couchbase');
 
 describe('CouchbaseConnection', function() {
 	var CouchbaseConnection = require('..').CouchbaseConnection;
@@ -62,6 +63,27 @@ describe('CouchbaseConnection', function() {
 					done();
 				}
 			});
+		});
+	});
+
+	it('removing a doc using a doc id that does not exist', function(done) {
+		cbConn.cb.remove('ADASDASDASDASDASD', undefined, function(error, result) {
+			console.log(JSON.stringify({
+				error : error,
+				result : result
+			}, undefined, 2));
+
+			if (error) {
+				if (error.code === Couchbase.errors.keyNotFound) {
+					done();
+				} else {
+					console.log('remve failed: ' + error);
+					done(error);
+				}
+
+			} else {
+				done(new Error('remove should have resulted in an error'));
+			}
 		});
 	});
 });
