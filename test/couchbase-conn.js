@@ -22,20 +22,7 @@ describe('CouchbaseConnection', function() {
 	var CouchbaseConnection = require('..').CouchbaseConnection;
 	var cbConn = null;
 
-	after(function(done) {
-		if (cbConn) {
-			cbConn.on('STOPPED', function() {
-				console.log('Couchbase connection has been shutdown.');
-				done();
-			});
-
-			cbConn.stop();
-		} else {
-			done();
-		}
-	});
-
-	it('can be used to create a connection', function(done) {
+	before(function(done) {
 		var options = {
 			couchbase : {
 				"host" : [ "localhost:8091" ],
@@ -54,15 +41,60 @@ describe('CouchbaseConnection', function() {
 		cbConn = new CouchbaseConnection(options);
 		expect(cbConn).to.exist;
 		cbConn.start(function() {
-			cbConn.cb.set('CouchbaseConnection', {
-				msg : 'can be used to create a connection'
-			}, options, function(error, result) {
-				if (error) {
-					done(error);
-				} else {
-					done();
-				}
+			done();
+		});
+	});
+
+	after(function(done) {
+		if (cbConn) {
+			cbConn.on('STOPPED', function() {
+				console.log('Couchbase connection has been shutdown.');
+				done();
 			});
+
+			cbConn.stop();
+		} else {
+			done();
+		}
+	});
+
+	it('can be used to set a doc', function(done) {
+		cbConn.cb.set('CouchbaseConnection', {
+			msg : 'can be used to create a connection'
+		}, undefined, function(error, result) {
+			if (error) {
+				done(error);
+			} else {
+				cbConn.cb.remove('CouchbaseConnection', undefined, function(error, result) {
+					console.log(JSON.stringify({
+						error : error,
+						result : result
+					}, undefined, 2));
+
+					if (error) {
+						done(error);
+					} else {
+						cbConn.cb.remove('CouchbaseConnection', undefined, function(error, result) {
+							console.log(JSON.stringify({
+								error : error,
+								result : result
+							}, undefined, 2));
+
+							if (error) {
+								if (error.code === Couchbase.errors.keyNotFound) {
+									done();
+								} else {
+									console.log('remove failed: ' + error);
+									done(error);
+								}
+							} else {
+								done(new Error('remove should have resulted in an error because the doc was already deleted'));
+							}
+						});
+					}
+				});
+
+			}
 		});
 	});
 
@@ -77,7 +109,7 @@ describe('CouchbaseConnection', function() {
 				if (error.code === Couchbase.errors.keyNotFound) {
 					done();
 				} else {
-					console.log('remve failed: ' + error);
+					console.log('remove failed: ' + error);
 					done(error);
 				}
 
@@ -85,5 +117,6 @@ describe('CouchbaseConnection', function() {
 				done(new Error('remove should have resulted in an error'));
 			}
 		});
+
 	});
 });
