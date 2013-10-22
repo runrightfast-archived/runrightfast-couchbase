@@ -23,7 +23,7 @@ var when = require('when');
 var uuid = require('uuid');
 var lodash = require('lodash');
 
-describe.only('EntityDatabase', function() {
+describe('EntityDatabase', function() {
 	var database = null;
 
 	var idsToDelete = [];
@@ -267,7 +267,9 @@ describe.only('EntityDatabase', function() {
 					expect(retrievedEntity.id).to.equal(result.value.id);
 
 					result.value.description = 'test : can update an Entity from the database';
-					when(database.updateEntity({}, result.cas, 'azappala'), function(result) {
+					when(database.updateEntity({
+						createdOn : 'INVALID DATE'
+					}, result.cas, 'azappala'), function(result) {
 						done(new Error('Expected update to fail'));
 					}, function(err) {
 						console.log(err);
@@ -347,9 +349,6 @@ describe.only('EntityDatabase', function() {
 			expect(result.cas).to.exist;
 			expect(result.value instanceof Entity).to.equal(true);
 
-			var namespace = result.value.namespace;
-			var version = result.value.version;
-
 			var removePromise_1 = when(database.deleteEntity(entity.id), function(result) {
 				return result;
 			}, function(err) {
@@ -359,7 +358,7 @@ describe.only('EntityDatabase', function() {
 			var removePromise_2 = when(removePromise_1, function(result) {
 				console.log('delete result #1 : ' + JSON.stringify(result, undefined, 2));
 
-				return when(database.deleteEntity(namespace, version), function(result) {
+				return when(database.deleteEntity(entity.id), function(result) {
 					console.log('delete result2 : ' + JSON.stringify(result, undefined, 2));
 					return result;
 				}, function(error) {
@@ -377,6 +376,15 @@ describe.only('EntityDatabase', function() {
 
 		}, function(err) {
 			done(error);
+		});
+	});
+
+	it('#deleteEntities validates the entity id array', function(done) {
+		when(database.deleteEntities([ 1, 2 ]), function() {
+			done(new Error('expected validation error'));
+		}, function(error) {
+			console.log(error);
+			done();
 		});
 	});
 
@@ -503,6 +511,236 @@ describe.only('EntityDatabase', function() {
 		}, function(error) {
 			done(error);
 		});
+	});
+
+	describe('has query functionality', function() {
+		var idsToDelete = [];
+		var entities = [];
+
+		before(function(done) {
+			this.timeout(1000 * 10);
+
+			var now = Date.now();
+			for ( var i = 0; i < 10; i++) {
+				entities.push(new Entity());
+
+				entities.push(new Entity({
+					createdOn : new Date(now + (1000 * 60 * 60 * 24 * i)),
+					updatedOn : new Date(now + (1000 * 60 * 60 * 24 * i))
+				}));
+			}
+
+			lodash.forEach(entities, function(entity) {
+				idsToDelete.push(entity.id);
+			});
+
+			var promises = lodash.map(entities, function(entity) {
+				return when(database.createEntity(entity), function(result) {
+					return result;
+				}, function(error) {
+					return error;
+				});
+			});
+
+			// ensure design docs have been created
+			promises.push(when(database.checkDesignDocs(true, true), function(results) {
+				console.log(JSON.stringify(results, undefined, 2));
+			}, function(error) {
+				done(error);
+			}));
+
+			when(when.all(promises), function(results) {
+				console.log('All entities have been created: ' + entities.length);
+				/*
+				 * By default, docs get persisted to disk every 5 seconds. Docs
+				 * will not be available to query until they have been written
+				 * to disk.
+				 */
+				setTimeout(done, 5300);
+			});
+
+		});
+
+		after(function(done) {
+			database.deleteEntities(idsToDelete).then(function(result) {
+				idsToDelete = [];
+				done();
+			}, function(error) {
+				console.error(JSON.stringify(error, undefined, 2));
+				done(error.error);
+			});
+		});
+
+		it('#checkDesignDocs validates create arg is a Boolean if specified', function(done) {
+			database.checkDesignDocs('', true).then(function(result) {
+				done(new Error('expected validation error'));
+			}, function(err) {
+				console.log(err);
+				done();
+			});
+		});
+
+		it('#checkDesignDocs validates replace arg is a Boolean if specified', function(done) {
+			database.checkDesignDocs(true, '').then(function(result) {
+				done(new Error('expected validation error'));
+			}, function(err) {
+				console.log(err);
+				done();
+			});
+		});
+
+		describe('#getEntitiesByCreatedOn', function() {
+
+			it('validates that that date range values are Date objects', function(done) {
+				var now = Date.now();
+				var queryOptions = {
+					from : {},
+					to : ''
+				};
+				when(database.getEntitiesByCreatedOn(queryOptions), function(result) {
+					done(new Error('Expected validation error'));
+				}, function(error) {
+					console.log(error);
+					done();
+				});
+			});
+
+			it('retrieves the first 20 records by default', function(done) {
+				when(database.getEntitiesByCreatedOn(), function(result) {
+					console.log('query results: ' + JSON.stringify(result, undefined, 2));
+					try {
+						expect(result.length).to.equal(20);
+						done();
+					} catch (err) {
+						done(err);
+					}
+
+				}, function(error) {
+					done(error);
+				});
+			});
+
+			it('can return the Entity objects', function(done) {
+				when(database.getEntitiesByCreatedOn({
+					returnDocs : true
+				}), function(result) {
+					console.log('query results: ' + JSON.stringify(result, undefined, 2));
+					try {
+						try {
+							expect(result.length).to.equal(20);
+							result.forEach(function(record) {
+								expect(record.value instanceof Entity).to.equal(true);
+							});
+							done();
+						} catch (err) {
+							done(err);
+						}
+					} catch (err) {
+						done(err);
+					}
+
+				}, function(error) {
+					done(error);
+				});
+			});
+
+			it('can filter on a date range', function(done) {
+				var now = Date.now();
+				var queryOptions = {
+					from : new Date(now + (1000 * 60 * 60 * 24)),
+					to : new Date(now + (1000 * 60 * 60 * 24 * 5))
+				};
+				when(database.getEntitiesByCreatedOn(queryOptions), function(result) {
+					console.log('result.length = ' + result.length);
+					console.log('query results: ' + JSON.stringify(result, undefined, 2));
+					try {
+						expect(result.length).to.equal(4);
+						done();
+					} catch (err) {
+						done(err);
+					}
+
+				}, function(error) {
+					done(error);
+				});
+			});
+
+		});
+
+		describe('#getEntitiesByUpdatedOn', function() {
+			it('can page through results using skip', function(done) {
+				var now = Date.now();
+				var queryOptions = {
+					limit : 5,
+					skip : 0
+				};
+
+				var docCount = 0;
+
+				var nextPage = function(queryOptions) {
+					return when(database.getEntitiesByUpdatedOn(queryOptions), function(result) {
+						docCount += result.length;
+						console.log('docCount = ' + docCount);
+						console.log('result.length = ' + result.length);
+						console.log('query results: ' + JSON.stringify(result, undefined, 2));
+						return result;
+					}, function(error) {
+						done(error);
+					});
+				};
+
+				var pages = [];
+				for ( var i = 0; i < 5; i++) {
+					queryOptions.skip += 5;
+					pages.push(nextPage(queryOptions));
+				}
+
+				when(when.all(pages), function(result) {
+					done();
+				}, function(error) {
+					done(error);
+				});
+
+			});
+
+			it('can page through results using skip and startkey_docid', function(done) {
+				var now = Date.now();
+				var queryOptions = {
+					limit : 5,
+					skip : 0
+				};
+
+				var docCount = 0;
+
+				var nextPage = function(queryOptions) {
+					return when(database.getEntitiesByUpdatedOn(queryOptions), function(result) {
+						docCount += result.length;
+						console.log('docCount = ' + docCount);
+						console.log('result.length = ' + result.length);
+						console.log('query results: ' + JSON.stringify(result, undefined, 2));
+						return result;
+					}, function(error) {
+						done(error);
+					});
+				};
+
+				var firstPage = nextPage(queryOptions);
+
+				when(firstPage, function(result) {
+					queryOptions.startDocId = result[result.length - 1].id;
+					return nextPage(queryOptions);
+				}, function(err) {
+					done(err);
+				}).then(function(result) {
+					done();
+				}, function(err) {
+					done(err);
+				});
+
+			});
+
+		});
+
 	});
 
 });

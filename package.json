@@ -1,6 +1,6 @@
 {
 	"name":"runrightfast-couchbase",
-	"version":"0.0.6",
+	"version":"0.0.7",
 	"description":"RunRightFast Couchbase helps manage Couchbase connections",
 	"repository":{
 		"type":"git",
@@ -11,7 +11,8 @@
 		"blanket":{
 			"pattern":[
 				"lib/couchbase-conn.js",
-				"lib/couchbase-conn-manager.js"
+				"lib/couchbase-conn-manager.js",
+				"lib/entity-database.js"
 			]
 		}		
 	},
