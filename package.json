@@ -1,6 +1,6 @@
 {
 	"name":"runrightfast-couchbase",
-	"version":"0.0.8",
+	"version":"0.0.9",
 	"description":"RunRightFast Couchbase helps manage Couchbase connections",
 	"repository":{
 		"type":"git",
@@ -21,11 +21,10 @@
 	"dependencies":{
 		"lodash":"2.2.x",
 		"hoek":"1.1.x",
-		"runrightfast-commons":"git://github.com/runrightfast/runrightfast-commons.git#0.0.15",
+		"runrightfast-commons":"git://github.com/runrightfast/runrightfast-commons.git#0.0.16",
 		"log4js":"0.6.x",
 		"extend":"1.2.x",
 		"couchbase":"1.0.x",		
-		"uuid":"1.4.x",
 		"when":"2.5.x",
 		"joi":"1.2.x"
 	},
